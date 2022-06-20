@@ -1,0 +1,10 @@
+package com.Enumerators;
+
+public enum ParseOption {
+    INT,
+    STRING,
+    DOUBLE,
+    FLOAT,
+    BOOLEAN,
+    BIGDECIMAL
+}
