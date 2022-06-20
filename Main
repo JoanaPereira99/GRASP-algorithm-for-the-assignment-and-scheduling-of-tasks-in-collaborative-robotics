@@ -1,0 +1,18 @@
+package com;
+
+import com.Objects.Group;
+
+import javax.swing.*;
+import java.util.Scanner;
+
+public class Main {
+
+    public static final boolean dev = false;
+
+    public static void main(String[] args){
+        //new Data();
+        Menu.Menu();
+    }
+
+
+}
