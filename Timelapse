@@ -1,0 +1,88 @@
+package com.Objects;
+
+import java.io.Serializable;
+import java.math.BigDecimal;
+import java.sql.Time;
+import java.util.Objects;
+
+public class Timelapse implements Serializable {
+
+    private BigDecimal startTime;
+
+    private BigDecimal endTime;
+
+
+    public Timelapse(BigDecimal startTime, BigDecimal endTime) {
+        setStartTime(startTime);
+        setEndTime(endTime);
+    }
+    public Timelapse() {
+        setStartTime(null);
+        setEndTime(null);
+    }
+
+
+
+    @Override
+    public String toString() {
+        return "["+startTime+","+endTime+"]";
+    }
+
+    public BigDecimal getStartTime() {
+        return startTime;
+    }
+
+    public Timelapse setStartTime(BigDecimal startTime) {
+        if (startTime == null) startTime = BigDecimal.ZERO;
+        this.startTime = startTime;
+        return this;
+    }
+
+    public Timelapse addStartTime(BigDecimal startTime) {
+        if (startTime == null) startTime = BigDecimal.ZERO;
+        this.startTime = this.startTime.add(startTime);
+        return this;
+    }
+
+    public BigDecimal getEndTime() {
+        return endTime;
+    }
+
+    public Timelapse setEndTime(BigDecimal endTime) {
+        if (endTime == null) endTime = BigDecimal.ZERO;
+        this.endTime = endTime;
+        return this;
+    }
+
+    public Timelapse addEndTime(BigDecimal endTime) {
+        if (endTime == null) endTime = BigDecimal.ZERO;
+        this.endTime = this.endTime.add(endTime);
+        return this;
+    }
+
+    public BigDecimal getDuration() {
+        return this.getStartTime().compareTo(getEndTime()) > 0 ? BigDecimal.ZERO : getEndTime().subtract(getStartTime());
+    }
+
+    @Override
+    protected Timelapse clone() {
+        Timelapse ret = new Timelapse();
+        ret.setStartTime(new BigDecimal(String.valueOf(this.getStartTime())));
+        ret.setEndTime(new BigDecimal(String.valueOf(this.getEndTime())));
+        return ret;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Timelapse)) return false;
+        Timelapse timelapse = (Timelapse) o;
+        return Objects.equals(startTime, timelapse.startTime) && Objects.equals(endTime, timelapse.endTime);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(startTime, endTime);
+    }
+}
+
