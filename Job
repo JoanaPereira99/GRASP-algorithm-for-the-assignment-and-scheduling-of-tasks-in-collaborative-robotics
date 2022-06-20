@@ -1,0 +1,346 @@
+package com.Objects;
+
+import com.Functions.GRASP;
+
+import java.io.Serializable;
+import java.math.BigDecimal;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+public class Job implements Serializable {
+
+    private String name;
+    private SuperGroup groups;
+
+    private BigDecimal MAX_ERGONOMIC = BigDecimal.ZERO;
+
+    private Vector<Group> unassociatedGroups = new Vector<>();
+
+    private Timelapse timelapse = new Timelapse();
+
+    /**
+     *  PERCENTAGEM QUE INFLUENCIARÁ O TAMANHO DA LISTA RESTRITA DE CANDIDATOS DO GRASP.
+     *  DEFAULT: 0.1 (10%)
+     *  Aviso: Se for maior que 1 o valor será reduzido para 1 (100%)
+     *
+     */
+    private static final BigDecimal GRASP_PERCENTAGE = new BigDecimal("0.8"); //
+
+    /**
+     *  NUMERO DE INTERAÇÕES QUE O GRASP IRÁ EXECUTAR.
+     *  DEFAULT: 2
+     *
+     */
+    private static final BigDecimal GRASP_ITERATIONS = new BigDecimal(100); //
+
+    /**
+     * @param name
+     */
+    public Job(String name) {
+        this.name = name;
+    }
+
+    public void execute(){
+        if(this.groups != null){
+            groups.execute(BigDecimal.ZERO);
+            this.timelapse.setEndTime(getEndTimeOfDependencies(this.getGroups()));
+        }
+    }
+
+    public void optimize(){
+        // Grasp
+        Vector<Task> tasksGrasp = new Vector<>();
+        boolean graspMoreTasks = true;
+        if(graspMoreTasks){
+            Vector<Group> groups = getAllGroups(getGroups());
+            for (Group g : groups) {
+                Vector<Task> humanRobotTasks = new Vector<>(g.getRobotTasks());
+                humanRobotTasks.addAll(g.getHumanTasks());
+                tasksGrasp.add(GRASP.GRASP(Job.GRASP_ITERATIONS, humanRobotTasks, Job.GRASP_PERCENTAGE));
+            }
+
+        } else {
+            Vector<Task> humanRobotTasks = new Vector<>(this.getRobotTasks());
+            humanRobotTasks.addAll(this.getHumanTasks());
+            tasksGrasp.add(GRASP.GRASP(Job.GRASP_ITERATIONS, humanRobotTasks, Job.GRASP_PERCENTAGE));
+        }
+        // Choose best time
+        Vector<Task> tasks = getAllTasks(this.groups);
+        for (Task t : tasks) {
+            if(tasksGrasp.contains(t)){
+                int r = new Random().nextInt(2);
+                if((t.canRobotDo() && r == 1) || (!t.canHumanDo() || t.getErgonomic().compareTo(MAX_ERGONOMIC) > 0)){ //r == 1 && t.canRobotDo() && ((!t.canHumanDo() || t.getHumanTime().compareTo(t.getRobotTime()) >= 0) || t.getErgonomic().compareTo(MAX_ERGONOMIC) > 0)){
+                    t.setExecutedByRobot(true);
+                } else if (t.canHumanDo() && (!t.canRobotDo() || t.getErgonomic().compareTo(MAX_ERGONOMIC) <= 0 )) {
+                    t.setExecutedByHuman(true);
+                }
+            } else {
+                if (!t.isExecutedByBoth()) {
+                    if (t.canRobotDo() && ((!t.canHumanDo() || t.getHumanTime().compareTo(t.getRobotTime()) >= 0) || t.getErgonomic().compareTo(MAX_ERGONOMIC) > 0)) {
+                        t.setExecutedByRobot(true);
+                    } else if (t.canHumanDo()) {
+                        t.setExecutedByHuman(true);
+                    }
+                }
+            }
+        }
+    }
+
+    public void removeGroup(Group g){
+        Vector<SuperGroup> superGroups = new Vector<>(getAllDependencies(this.groups));
+        for (SuperGroup sg: superGroups) {
+            if(sg.getGroups().contains(g)){
+                sg.removeGroup(g);
+            }
+        }
+    }
+
+    public Vector<Task> getAllTasks(SuperGroup gs){
+        return getAllTasks(gs, true);
+    }
+
+    public Vector<Task> getAllTasks(SuperGroup gs, boolean unassociated){
+
+        if(gs == null){
+            Vector<Task> tasks = new Vector<>();
+            for (Group g : this.unassociatedGroups) {
+                tasks.addAll(g.getTasks());
+            }
+            return tasks;
+        }
+
+        Vector<Task> tasks = new Vector<>();
+        for (Group g : gs.getGroups()) {
+            tasks.addAll(g.getTasks());
+        }
+
+
+
+        if(gs.getDependencies() != null){
+            tasks.addAll(getAllTasks(gs.getDependencies()));
+        } else if(unassociated) {
+            for (Group g : unassociatedGroups) {
+                tasks.addAll(g.getTasks());
+            }
+        }
+
+        return tasks;
+    }
+
+    public Vector<SuperGroup> getAllDependencies(SuperGroup gs){
+        if(gs == null) return new Vector<>();
+        Vector<SuperGroup> dependencies = new Vector<>();
+        dependencies.add(gs);
+        if(gs.getDependencies() != null) dependencies.addAll(getAllDependencies(gs.getDependencies()));
+        return dependencies;
+    }
+
+    public Vector<Group> getAllGroups(SuperGroup gs){
+        if(gs == null) return new Vector<>();
+        Vector<Group> groups = new Vector<>(gs.getGroups());
+        if(gs.getDependencies() != null) groups.addAll(getAllGroups(gs.getDependencies()));
+        return groups;
+    }
+
+    public String getFormattedDependencies(SuperGroup gs){
+        if(gs == null) return "";
+        List<String> names = gs.getGroups().stream().map(Group::getName).collect(Collectors.toList());
+        StringBuilder ret = new StringBuilder();
+        for (String s : names) {
+            ret.append(s).append(",");
+        }
+        if(names.size() > 0) ret.deleteCharAt(ret.toString().length()-1);
+        if(gs.getDependencies() != null) ret.append(";").append(getFormattedDependencies(gs.getDependencies()));
+        return ret.toString();
+    }
+
+    private BigDecimal getEndTimeOfDependencies(SuperGroup g){
+        BigDecimal count;
+        if(g.getDependencies() != null) {
+            count = getEndTimeOfDependencies(g.getDependencies());
+        } else {
+            count = g.getTimelapse().getEndTime();
+        }
+        return count;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    @Override
+    public String toString() {
+        Vector<String> groupsName = getAllGroups(getGroups()).stream().map(Group::getName).collect(Collectors.toCollection(Vector::new));
+        groupsName.addAll(getUnassociatedGroups().stream().map(Group::getName).collect(Collectors.toCollection(Vector::new)));
+        return "{" +
+                "name='" + getName() + "'" +
+                ", groups=" + groupsName + "" +
+                ", tasks(" + getAllTasks(this.getGroups()).size() +")=" + getAllTasks(groups).stream().map(Task::getName).collect(Collectors.toList()) + "" +
+                ", human(" + getHumanTasks().size() +")=" + getHumanTasks().stream().map(Task::getName).collect(Collectors.toList()) + "" +
+                ", robot(" + getRobotTasks().size() +")=" + getRobotTasks().stream().map(Task::getName).collect(Collectors.toList()) + "" +
+                ", both(" + getBothTasks().size() +")=" + getBothTasks().stream().map(Task::getName).collect(Collectors.toList()) + "" +
+                ", dependencies=[" + getFormattedDependencies(groups) + "]" +
+                ", timelapse=" + timelapse +
+                '}';
+    }
+
+    public boolean setDependenciesOrder(String str){
+        String regex = "([a-zA-Z0-9\\s{2,}]+)";
+        Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(str);
+        boolean reset = false;
+        SuperGroup backupGroups = this.groups == null ? null : this.groups.clone();
+        Vector<Group> groups = this.getAllGroups(getGroups());
+        groups.addAll(unassociatedGroups);
+        this.setGroups(null);
+        SuperGroup main = new SuperGroup();
+        while(matcher.find()) {
+            String matched = matcher.group(0);
+
+            SuperGroup sg = new SuperGroup();
+            Vector<SuperGroup> dependencies = this.getAllDependencies(main);
+            if(matched.contains(",")){
+                String regex2 = "([a-zA-Z0-9\\s]+)";
+                Pattern pattern2 = Pattern.compile(regex2, Pattern.CASE_INSENSITIVE);
+                Matcher matcher2 = pattern2.matcher(matched);
+                while(matcher2.find()) {
+                    String matched2 = matcher2.group(0);
+                    if(groups.stream().noneMatch(group -> group.getName().equals(matched2))) {
+                        reset = true;
+                        break;
+                    }
+                    Vector<Group> groupsMatched = groups.stream().filter(group -> group.getName().equals(matched2)).collect(Collectors.toCollection(Vector::new));
+                    if(groupsMatched.size() > 0){
+                        sg.addGroup(groupsMatched.get(0));
+                    } else {
+                        reset = true;
+                        break;
+                    }
+                }
+            } else {
+                if(groups.stream().noneMatch(group -> group.getName().equals(matched))) {
+                    reset = true;
+                    break;
+                }
+                sg.setGroups(groups.stream().filter(group -> group.getName().equals(matched)).collect(Collectors.toCollection(Vector::new)));
+            }
+            if(dependencies.size() > 0) {
+                dependencies.get(dependencies.size() - 1).setDependencies(sg);
+            } else {
+                dependencies.add(sg);
+            }
+        }
+        this.setGroups(main.getDependencies());
+
+
+        if(reset){
+            this.setGroups(backupGroups);
+        } else {
+
+            Vector<Group> unassociatedGroups = this.getUnassociatedGroups().stream().filter(group -> !getAllGroups(main.getDependencies()).contains(group)).collect(Collectors.toCollection(Vector::new));
+            unassociatedGroups.addAll(
+                    getAllGroups(backupGroups).stream().filter(group -> {
+                        boolean ret2 = !getAllGroups(main.getDependencies()).contains(group);
+                        return ret2;
+                    }).collect(Collectors.toCollection(Vector::new))
+            );
+            if(this.getAllDependencies(this.getGroups()).size() > 0) {
+                this.getAllDependencies(this.groups).get(this.getAllDependencies(this.getGroups()).size() - 1).setDependencies(new SuperGroup().setGroups(unassociatedGroups));
+                this.unassociatedGroups = new Vector<>();
+            }
+        }
+        return !reset;
+    }
+    public Vector<Task> getHumanTasks(){
+        return getHumanTasks(false);
+    }
+    public Vector<Task> getHumanTasks(boolean both){
+        return (getAllTasks(this.getGroups()).stream().filter(task -> (task.isExecutedByHuman() && !task.isExecutedByBoth()) || (both && task.isExecutedByBoth())).collect(Collectors.toCollection(Vector::new)));
+    }
+
+    public Vector<Task> getRobotTasks(){
+        return getRobotTasks(false);
+    }
+
+    public Vector<Task> getRobotTasks(boolean both){
+        return (getAllTasks(this.getGroups()).stream().filter(task -> (task.isExecutedByRobot() && !task.isExecutedByBoth()) || (both && task.isExecutedByBoth())).collect(Collectors.toCollection(Vector::new)));
+    }
+
+    public Vector<Task> getBothTasks(){
+        return (getAllTasks(this.getGroups()).stream().filter(Task::isExecutedByBoth)).collect(Collectors.toCollection(Vector::new));
+    }
+
+    public SuperGroup getGroups() {
+        return groups;
+    }
+
+    public void setGroups(SuperGroup groups) {
+        this.groups = groups;
+    }
+
+    public Timelapse getTimelapse() {
+        return timelapse;
+    }
+
+    public void setTimelapse(Timelapse timelapse) {
+        if(timelapse == null) timelapse = new Timelapse();
+        this.timelapse = timelapse;
+    }
+
+    public Vector<Group> getUnassociatedGroups() {
+        return unassociatedGroups;
+    }
+
+    public void setUnassociatedGroups(Vector<Group> unassociatedGroups) {
+        this.unassociatedGroups = unassociatedGroups;
+    }
+
+    public void addUnassociatedGroup(Group g){
+        if(g == null) return;
+        this.unassociatedGroups.add(g);
+    }
+
+    public void removeUnassociatedGroup(Group g){
+        if(g == null) return;
+        this.unassociatedGroups.remove(g);
+    }
+
+    public BigDecimal getMaxErgonomic() {
+        return MAX_ERGONOMIC;
+    }
+
+    public void setMaxErgonomic(BigDecimal maxErgonomic) {
+        if(maxErgonomic == null || maxErgonomic.compareTo(BigDecimal.ZERO) < 0) maxErgonomic = BigDecimal.ZERO;
+        this.MAX_ERGONOMIC = maxErgonomic;
+    }
+
+    @Override
+    public Job clone() {
+        Job ret = new Job(this.getName());
+        ret.groups = this.groups.clone();
+        for(Group g : unassociatedGroups){
+            ret.unassociatedGroups.add(g.clone());
+        }
+        ret.timelapse = this.timelapse.clone();
+        return ret;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Job)) return false;
+        Job job = (Job) o;
+        return Objects.equals(name, job.name) && Objects.equals(groups, job.groups) && Objects.equals(unassociatedGroups, job.unassociatedGroups) && Objects.equals(timelapse, job.timelapse);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, groups, unassociatedGroups, timelapse);
+    }
+}
