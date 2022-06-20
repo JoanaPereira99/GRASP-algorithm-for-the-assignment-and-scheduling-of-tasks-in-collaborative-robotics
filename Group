@@ -1,0 +1,137 @@
+package com.Objects;
+
+import com.Enumerators.Entity;
+
+import java.io.Serializable;
+import java.util.Objects;
+import java.util.Vector;
+
+public class Group implements Serializable {
+
+    private String name;
+    private Vector<Task> tasks = new Vector<>();
+    private Timelapse timelapse = new Timelapse();
+
+    public Group(String name) {
+        this.name = name;
+    }
+    public Group(String name, Vector<Task> tasks) {
+        this.name = name;
+        this.tasks = tasks;
+    }
+
+    /**
+     * @return
+     */
+    public Vector<Task> getHumanTasks() {
+        Vector<Task> dummy = new Vector<>();
+        for (Task e: tasks) {
+            if (e.getChosenOne() == Entity.HUMAN ) dummy.add(e);
+        }
+        return dummy;
+
+    }
+
+    /**
+     * @return
+     */
+    public Vector<Task> getRobotTasks() {
+        Vector<Task> dummy = new Vector<>();
+        for (Task e: tasks) {
+            if (e.getChosenOne() == Entity.ROBOT ) dummy.add(e);
+        }
+        return dummy;
+    }
+
+    /**
+     * @return
+     */
+    public Vector<Task> getBothTasks() {
+        Vector<Task> dummy = new Vector<>();
+        for (Task e: tasks) {
+            if (e.getChosenOne() == Entity.BOTH ) dummy.add(e);
+        }
+        return dummy;
+    }
+
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public Vector<Task> getTasks() {
+        return tasks;
+    }
+
+    public void setTasks(Vector<Task> tasks) {
+        this.tasks = tasks;
+    }
+
+    public Group addTask(Task t) {
+        if(t != null) this.tasks.add(t);
+        return this;
+    }
+
+    public Group removeTask(Task t) {
+        if(t != null) this.tasks.remove(t);
+        return this;
+    }
+
+    public Timelapse getTimelapse() {
+        return timelapse;
+    }
+
+    public void setTimelapse(Timelapse timelapse) {
+        if(timelapse == null) timelapse = new Timelapse();
+        this.timelapse = timelapse;
+    }
+
+    public Vector<Task> getTasksByTimelapse(Timelapse timelapse){
+        if(timelapse == null || timelapse.getStartTime().compareTo(timelapse.getEndTime()) > 0) return new Vector<>();
+        Vector<Task> groups = new Vector<>();
+        for(Task t : this.tasks){
+            if(t.getTimelapse() != null){
+                if(t.getTimelapse().getEndTime().compareTo(timelapse.getStartTime()) >= 0 && t.getTimelapse().getStartTime().compareTo(timelapse.getEndTime()) <= 0){
+                    groups.add(t);
+                }
+            }
+        }
+        return groups;
+    }
+
+    @Override
+    public String toString() {
+        return "{" +
+                "name='" + name + '\'' +
+                ", tasks=" + tasks +
+                ", timelapse=" + timelapse +
+                '}';
+    }
+
+    @Override
+    protected Group clone() {
+        Group ret = new Group(this.getName());
+        ret.timelapse = this.timelapse.clone();
+        for(Task t : this.tasks){
+            ret.tasks.add(t.clone());
+        }
+        return ret;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Group)) return false;
+        Group group = (Group) o;
+        return Objects.equals(name, group.name) && Objects.equals(tasks, group.tasks) && Objects.equals(timelapse, group.timelapse);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, tasks, timelapse);
+    }
+}
