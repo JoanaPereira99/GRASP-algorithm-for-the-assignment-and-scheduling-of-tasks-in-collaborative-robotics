@@ -1,0 +1,707 @@
+package com;
+
+import com.Enumerators.Entity;
+import  com.Enumerators.MenuType;
+import com.Enumerators.Option;
+import com.Enumerators.ParseOption;
+import com.Objects.Group;
+import com.Objects.Job;
+import com.Objects.Task;
+
+import java.io.File;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static com.Main.dev;
+
+public class Menu {
+
+    private static Scanner scanner = new Scanner(System.in);
+
+    private static Vector<Job> jobs = new Vector<Job>();
+    private static final String PATH = "Jobs\\";
+
+    public static Vector<Job> getJobs() {
+        return jobs;
+    }
+
+    public static String getPath() {
+        return PATH;
+    }
+
+    public static void Menu() {
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            Path path = Paths.get(getPath());
+            File file = path.toFile();
+            if(file.listFiles() != null) {
+                for (File f : file.listFiles()) {
+                    f.delete();
+                }
+            }
+            for(Job job : Menu.getJobs()){
+                kuro.Files.Serializable.writeObject(job, PATH + "\\" + job.getName() + ".job", true);
+            }
+        }));
+
+        Path path = Paths.get(getPath());
+        File file = path.toFile();
+        if(file.listFiles() != null) {
+            for (File f : file.listFiles()) {
+                String name = f.getName();
+
+                try {
+                    Object obj = kuro.Files.Serializable.readObject(0, getPath() + name);
+                    if (obj instanceof Job) {
+                        jobs.add((Job) obj);
+                    } else {
+                        System.err.println("It was not possible to read the Job. " + f.getName() + "!");
+                    }
+                } catch (IOException | ClassNotFoundException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+
+        //jobs.addAll(new Data().getJobs());
+        printMenu(MenuType.MAIN);
+    }
+
+    public static void printMenu(MenuType type) {
+        boolean repeat = true;
+        while (repeat) {
+            System.out.println("# --------------------------------------------------------------------------- #");
+            Option[] options = Option.getOptionsByMenu(type);
+
+            for (Option op : Option.getOptionsByMenu(type)) {
+                System.out.println(op.getPos() + " - " + op.getFullName());
+            }
+
+            System.out.println("# --------------------------------------------------------------------------- #");
+            int option = -1;
+            while (option == -1) {
+                System.out.print("What is the selected option? ");
+
+                String s = readOption();
+                if (kuro.Parse.tryParseInt(s)) {
+                    List<Integer> availableOptions = Arrays.stream(options).map(Option::getPos).collect(Collectors.toList());
+                    if (availableOptions.contains(Integer.valueOf(s))) {
+                        option = Integer.parseInt(s);
+                    } else {
+                        System.out.println("The introduced value is not within the scope of options!");
+                    }
+                } else {
+                    System.out.println("Invalid value!");
+                }
+            }
+            Option op = Option.getOptionByPos(option);
+            if (op != null) {
+                switch (op) {
+                    case MAIN_CREATE_JOB:
+                        MENU_CREATE_JOB();
+                        break;
+                    case MAIN_LIST_JOBS:
+                        MENU_LIST_JOBS();
+                        break;
+                    case MAIN_EXIT:
+                        repeat = false;
+                        break;
+
+                }
+            }
+        }
+        System.out.println("Goodbye :)!");
+    }
+
+    public static String readOption() {
+        return (String) readOption(ParseOption.STRING);
+    }
+
+    public static Object readOption(ParseOption parse) {
+        String s = scanner.nextLine();
+        ;
+        switch (parse) {
+
+            case INT:
+                return kuro.Parse.tryParseInt(s) ? Integer.valueOf(s) : null;
+            case BIGDECIMAL:
+                return kuro.Parse.tryParseDouble(s) ? new BigDecimal(s) : null;
+            case STRING:
+            default:
+                return s;
+        }
+    }
+
+    public static void MENU_CREATE_JOB() {
+        System.out.print("Enter the name of the Job: ");
+        String name = readOption();
+        jobs.add(new Job(name));
+    }
+
+    public static void MENU_LIST_JOBS() {
+        boolean a = true;
+        while (a) {
+            clearConsole();
+            System.out.println("Available Jobs: ");
+            for (int i = 0; i < jobs.size(); i++) {
+                System.out.println((i + 1) + " - " + jobs.get(i).getName());
+            }
+            if (jobs.size() == 0) System.out.println("There are no Jobs to present.");
+            System.out.println("\n0 - Return");
+            int value = -1;
+            while (value < 0 || value > jobs.size()) {
+                System.out.print("Enter a value: ");
+
+                Object obj = readOption(ParseOption.INT);
+                value = obj == null ? -1 : (int) obj;
+                if (value == -1) System.out.println("Invalid value!");
+                if (value > jobs.size()) System.out.println("Value out of the scope of options!");
+            }
+            if (value == Option.MAIN_EXIT.getPos()) {
+                a = false;
+                // sair
+            } else {
+                Job job = jobs.get(value - 1);
+                JOBMENU_DETAILS(job);
+            }
+        }
+    }
+
+    public static void JOBMENU_DETAILS(Job job) {
+        boolean repeat = true;
+        while (repeat) {
+            clearConsole();
+
+            Vector<Group> groups = new Vector<>();
+            groups.addAll(job.getAllGroups(job.getGroups()));
+            groups.addAll(job.getUnassociatedGroups());
+
+            System.out.println("Name: " + job.getName());
+            System.out.println("Groups: " + Arrays.toString(groups.stream().map(Group::getName).toArray()));
+            System.out.println("Actual Dependencies: " + job.getFormattedDependencies(job.getGroups()));
+            System.out.println("Tasks (" + job.getAllTasks(job.getGroups()).size() + "): " + job.getAllTasks(job.getGroups()).stream().map(Task::getName).collect(Collectors.toList()));
+            System.out.println("Maximum Ergonomic Risk: "+job.getMaxErgonomic()+"\n");
+
+            Option[] options = Option.getOptionsByMenu(MenuType.JOBLIST);
+            for (Option item : options) {
+                System.out.println(item.getPos() + " - " + item.getFullName());
+            }
+            int value = -1;
+            while (value == -1) {
+                System.out.print("Enter a value: ");
+                Object obj = readOption(ParseOption.INT);
+                if(!(obj instanceof Integer)){
+                    System.out.println("Invalid value!");
+                }else{
+                    if (Arrays.stream(options).noneMatch(option -> option.getPos() == (int) obj))
+                        System.out.println("Value out of the scope of options!");
+                    value = Arrays.stream(options).noneMatch(option -> option.getPos() == (int) obj) ? -1 : (int) obj;
+                    if (value == -1) System.out.println("Invalid value!");
+                }
+
+            }
+            Option option = Option.getOptionByPos(value, MenuType.JOBLIST);
+            if (option != null) {
+                switch (option) {
+                    case JOBLIST_CREATE_GROUP:
+                        JOBLIST_CREATE_GROUP(job);
+                        break;
+                    case JOBLIST_ESTABILISH_DEPENDENCIES:
+                        JOBLIST_ESTABILISH_DEPENDENCIES(job);
+                        break;
+                    case JOBSLIST_CHANGE_MAXERGONOMIC:
+                        JOBLIST_CHANGE_MAXERGONOMIC(job);
+                        break;
+                    case JOBLIST_LIST_GROUPS:
+                        JOBLIST_LIST_GROUPS(job);
+
+                        break;
+                    case JOBLIST_EXECUTE_PLAN:
+                        JOBLIST_EXECUTE_PLAN(job);
+                        break;
+                    case JOBLIST_CHANGENAME:
+                        JOBLIST_CHANGENAME(job);
+                        break;
+                    case JOBLIST_DELETE:
+                        JOBLIST_DELETE(job);
+                        repeat = false;
+                        break;
+                    case JOBLIST_GO_BACK:
+                        repeat = false;
+                        break;
+                }
+            }
+        }
+    }
+
+    private static void JOBLIST_CHANGE_MAXERGONOMIC(Job job){
+        System.out.print("Enter the maximum value for the ergonomic risk: ");
+        Object resposta = readOption(ParseOption.BIGDECIMAL);
+        job.setMaxErgonomic((BigDecimal) resposta);
+
+    }
+    private static void JOBLIST_EXECUTE_PLAN(Job job){
+        if(job == null) return;
+        job.optimize();
+        job.execute();
+
+
+        System.out.println("[ ================================= Schedule for: " + job.getName() + " ================================= ]");
+        System.out.println("Dependency: " + job.getFormattedDependencies(job.getGroups()));
+        System.out.println("Timelapse: " + job.getTimelapse());
+        System.out.println("Groups: ");
+        System.out.println("Maximum value for the ergonomic risk: "+job.getMaxErgonomic());
+        for (Group g : job.getAllGroups(job.getGroups())){
+            System.out.println(zeroWidthSpace(3) + "- " +g.getName() + ": ");
+            for (Task t : g.getTasks()) {
+                System.out.println(zeroWidthSpace(5) + "- " + t.getName() + ": ");
+                System.out.println(zeroWidthSpace(10) + "Ergonomic Risk: " + t.getErgonomic());
+                System.out.println(zeroWidthSpace(10) + "Time for Human: " + t.getHumanTime());
+                System.out.println(zeroWidthSpace(10) + "Time for Robot: " + t.getRobotTime());
+                System.out.println(zeroWidthSpace(10) + "Timelapse: " + t.getTimelapse());
+                System.out.println(zeroWidthSpace(10) + "Is the task collaborative? " + (t.isExecutedByBoth() ? "True" : "False") );
+                System.out.println(zeroWidthSpace(10) + "Chosen: " + t.getChosenOne().getName());
+
+            }
+        }
+        System.out.println("Groups): ");
+        for (Group g : job.getUnassociatedGroups()){
+            System.out.println(zeroWidthSpace(3) + "- " +g.getName() + ": ");
+            for (Task t : g.getTasks()) {
+                System.out.println(zeroWidthSpace(5) + "- " + t.getName() + ": ");
+                System.out.println(zeroWidthSpace(10) + "Ergonomic Risk: " + t.getErgonomic());
+                System.out.println(zeroWidthSpace(10) + "Time for Human: " + t.getHumanTime());
+                System.out.println(zeroWidthSpace(10) + "Time for Robot: " + t.getRobotTime());
+                System.out.println(zeroWidthSpace(10) + "Timelapse: " + t.getTimelapse());
+                System.out.println(zeroWidthSpace(10) + "Is the task collaborative?: " + (t.isExecutedByBoth() ? "True" : "False") );
+                System.out.println(zeroWidthSpace(10) + "Chosen: " + t.getChosenOne().getName());
+
+            }
+        }
+
+        System.out.println("[ ================================= End of Schedule for the Job ================================= ]");
+
+    }
+
+    public static String zeroWidthSpace(int value){
+        StringBuilder s = new StringBuilder();
+        for(int i = 0;  i < value; i++) s.append(" ");
+        return s.toString();
+    }
+
+    private static void JOBLIST_CHANGENAME(Job job) {
+        System.out.print("What is the new name? ");
+        String name = readOption();
+
+        job.setName(name == null || name.trim().length() == 0 ? job.getName() : name);
+
+    }
+    private static void JOBLIST_DELETE(Job job) {
+        jobs.remove(job);
+        System.out.println("\nJob Deleted.");
+    }
+
+    private static void JOBLIST_LIST_GROUPS(Job job) {
+        boolean a = true;
+        while (a) {
+            clearConsole();
+            System.out.println("Available Groups: ");
+            int i = 0;
+
+            System.out.println("[Groups]");
+            for (; i < job.getAllGroups(job.getGroups()).size(); i++) {
+                System.out.println("[" + (i + 1) + "] - " + job.getAllGroups(job.getGroups()).get(i).getName());
+            }
+            System.out.println("[Groups]");
+            for (; i - job.getAllGroups(job.getGroups()).size() < job.getUnassociatedGroups().size(); i++) {
+                System.out.println("[" + (i + 1) + "] - " + job.getUnassociatedGroups().get(i - job.getAllGroups(job.getGroups()).size()).getName());
+            }
+            if (job.getAllGroups(job.getGroups()).size() == 0 && job.getUnassociatedGroups().size() == 0)
+                System.out.println("There are no groups to present.");
+            System.out.println("\n0 - Return");
+            int value = -1;
+            int size = job.getAllGroups(job.getGroups()).size() + job.getUnassociatedGroups().size();
+            while (value < 0 || value > size) {
+                System.out.print("Enter a value: ");
+
+                Object obj = readOption(ParseOption.INT);
+                value = obj == null ? -1 : (int) obj;
+                if (value == -1) System.out.println("Invalid Value!");
+                if (value > size) System.out.println("Value is not within the scope of options!");
+            }
+            if (value == Option.GROUPLIST_GO_BACK.getPos()) {
+                a = false;
+                // sair
+            } else {
+                // 10
+                int associatedGroupsLength = job.getAllGroups(job.getGroups()).size();
+                // 5
+                int notAssociatedGroupsLength = job.getUnassociatedGroups().size();
+
+                boolean isAssociated = !(value > associatedGroupsLength);
+                int pos = isAssociated ? value - 1 : value - associatedGroupsLength - 1;
+                Group g = isAssociated ? job.getAllGroups(job.getGroups()).get(pos) : job.getUnassociatedGroups().get(pos);
+
+                GROUPMENU_DETAILS(job,g);
+            }
+        }
+    }
+
+    private static void GROUPMENU_DETAILS(Job job,Group g) {
+        boolean repeat = true;
+        while (repeat) {
+            clearConsole();
+            System.out.println("Name of the group: " + g.getName());
+            System.out.println("Total number of tasks: " + g.getTasks().size());
+            System.out.println("Tasks: " + g.getTasks().stream().map(Task::getName).collect(Collectors.toList()));
+
+
+            Option[] options = Option.getOptionsByMenu(MenuType.GROUPLIST);
+            for (Option item : options) {
+                System.out.println(item.getPos() + " - " + item.getFullName());
+            }
+            int value = -1;
+            while (value == -1) {
+                System.out.print("Enter a value ");
+                Object obj = readOption(ParseOption.INT);
+                if(!(obj instanceof Integer)){
+                    System.out.println("Invalid value!");
+                }else{
+                    if (Arrays.stream(options).noneMatch(option -> option.getPos() == (int) obj))
+                        System.out.println("Value is not within the scope of options!");
+                    value = Arrays.stream(options).noneMatch(option -> option.getPos() == (int) obj) ? -1 : (int) obj;
+                    if (value == -1) System.out.println("Invalid value!");
+                }
+
+            }
+            Option option = Option.getOptionByPos(value, MenuType.GROUPLIST);
+            if (option != null) {
+                switch (option) {
+                    case GROUPLIST_CHANGE_NAME:
+                        GROUPLIST_CHANGE_NAME(g);
+                        break;
+                    case GROUPLIST_CREATE_TASK:
+                        GROUPLIST_CREATE_TASK(g);
+                        break;
+                    case GROUPLIST_LIST_TASKS:
+                        GROUP_LIST_TASKS(g);
+                        break;
+                    case GROUPLIST_DELETE:
+                        GROUPLIST_DELETE(job,g);
+                        repeat = false;
+                        break;
+                    case GROUPLIST_GO_BACK:
+                        repeat = false;
+                        break;
+                }
+            }
+
+
+        }
+    }
+
+    private static void GROUPLIST_DELETE(Job job,Group g){
+
+        //jobs.remove(new Job(job.getName()));
+        //job.removeUnassociatedGroup(g);
+
+        job.removeGroup(g);
+        System.out.println("Deleted Group.");
+
+    }
+
+    private static void TASKMENU_DETAILS(Group g,Task t) {
+        boolean repeat = true;
+        while (repeat) {
+            clearConsole();
+            System.out.println("Name of the task: " + t.getName());
+            System.out.println("Time for the Human Worker: " + t.getHumanTime()+" seconds");
+            System.out.println("Time for the Robot: "+ t.getRobotTime()+" seconds");
+            System.out.println("Ergonomic Risk of Task: "+t.getErgonomic());
+            System.out.println("Is the task collaborative? "+t.isExecutedByBoth());
+
+
+
+            Option[] options = Option.getOptionsByMenu(MenuType.TASKLIST);
+            for (Option item : options) {
+                System.out.println(item.getPos() + " - " + item.getFullName());
+            }
+            int value = -1;
+            while (value == -1) {
+                System.out.print("Enter a value: ");
+                Object obj = readOption(ParseOption.INT);
+                if(!(obj instanceof Integer)){
+                    System.out.println("Invalid value!");
+                }else{
+                    if (Arrays.stream(options).noneMatch(option -> option.getPos() == (int) obj))
+                        System.out.println("Value out of the scope of options!");
+                    value = Arrays.stream(options).noneMatch(option -> option.getPos() == (int) obj) ? -1 : (int) obj;
+                    if (value == -1) System.out.println("Invalid value!");
+                }
+
+            }
+            Option option = Option.getOptionByPos(value, MenuType.TASKLIST);
+            if (option != null) {
+                switch (option) {
+                    case TASKLIST_CHANGE_NAME:
+                        TASKLIST_CHANGE_NAME(t);
+                        break;
+                    case TASKLIST_EDIT_ERGONOMIC:
+                        TASKLIST_EDIT_ERGONOMIC(t);
+                        break;
+                    case TASKLIST_EDIT_HUMAN_TIME:
+                        TASKLIST_EDIT_HUMAN_TIME(t);
+                        break;
+                    case TASKLIST_EDIT_ROBOT_TIME:
+                        TASKLIST_EDIT_ROBOT_TIME(t);
+                        break;
+                    case TASKLIST_EDIT_EXECUTED_BY_BOTH:
+                        TASKLIST_EDIT_EXECUTED_BY_BOTH(t);
+                        break;
+                    case TASKLIST_DELETE:
+                        TASKLIST_DELETE(g,t);
+                        repeat = false;
+                        break;
+                    case TASKLIST_GO_BACK:
+                        repeat = false;
+                        break;
+                }
+            }
+
+
+        }
+    }
+
+    private static void TASKLIST_DELETE(Group g, Task t){
+        g.removeTask(t);
+        System.out.println("Task Deleted");
+
+    }
+    private static void TASKLIST_CHANGE_NAME(Task t){
+        System.out.println("Enter the new name: ");
+        String name = readOption();
+        t.setName(name == null || name.trim().length() == 0 ? t.getName() : name);
+
+
+    }
+    private static void TASKLIST_EDIT_ERGONOMIC(Task t){
+        System.out.println("Enter the new value for the ERgonomic Risk: ");
+        Object resposta = readOption(ParseOption.BIGDECIMAL);
+        BigDecimal ergonomic = resposta == null ? new BigDecimal(-1) : (BigDecimal) resposta;
+        t.setErgonomic(ergonomic);
+    }
+    private static void TASKLIST_EDIT_HUMAN_TIME(Task t){
+        System.out.println("Enter the new value (in seconds) for the time of the Human to perform the task: ");
+        System.out.println("Or enter -1 if the Human cannot perform the task.");
+        Object resposta = readOption(ParseOption.BIGDECIMAL);
+        BigDecimal humanTime = resposta == null ? new BigDecimal(-1) : (BigDecimal) resposta;
+        t.setHumanTime(humanTime);
+
+    }
+    private static void TASKLIST_EDIT_ROBOT_TIME(Task t){
+        System.out.println("Enter the new value (in seconds) for the time of the Robot to perform the task: ");
+        System.out.println("Or enter -1 if the Robot cannot perform the task.");
+        Object resposta = readOption(ParseOption.BIGDECIMAL);
+        BigDecimal robotTime = resposta == null ? new BigDecimal(-1) : (BigDecimal) resposta;
+        t.setRobotTime(robotTime);
+
+    }
+    private static void TASKLIST_EDIT_EXECUTED_BY_BOTH(Task t){
+        Object optionR;
+        System.out.println("Is the task collaborative (performed by both the human and the robot)?");
+        System.out.println("[0] - No                        [1] - Yes");
+        optionR = readOption(ParseOption.INT); //
+        int resposta = optionR == null ? 1 : (int) optionR;
+        if (Arrays.stream(new int[]{0, 1}).noneMatch(value -> value == resposta)) {
+            System.out.println("Invalid answer.");
+            TASKLIST_EDIT_EXECUTED_BY_BOTH(t);
+        } else {
+            t.setExecutedByBoth(resposta == 1);
+        }
+
+    }
+
+
+
+
+    private static void GROUPLIST_CREATE_TASK(Group g) {
+        Task t = new Task();
+        BigDecimal valor = new BigDecimal("-1");
+
+        if(!dev) {
+
+            System.out.println("Enter the name of the task: ");
+            String nome = readOption();
+            t.setName(nome);
+
+
+            System.out.println("Enter the value (in seconds) for the time of the Human to perform the task: ");
+            System.out.println("Or enter -1 if the Human cannot perform the task.");
+            Object optionR = readOption(ParseOption.BIGDECIMAL);
+            BigDecimal tempoHumano = optionR == null ? new BigDecimal(-1) : (BigDecimal) optionR;
+            t.setHumanTime(tempoHumano);
+
+            System.out.println("Enter the value for the ergonomic risk of the task.");
+            optionR = readOption(ParseOption.BIGDECIMAL);
+            BigDecimal ergonomic = optionR == null ? new BigDecimal(0) : (BigDecimal) optionR;
+            t.setErgonomic(ergonomic);
+
+            System.out.println("Enter the value (in seconds) for the time of the Robot to perform the task: ");
+            System.out.println("Or enter -1 if the Robot cannot perform the task.");
+            optionR = readOption(ParseOption.BIGDECIMAL);
+            BigDecimal tempoMaquina = optionR == null ? new BigDecimal(-1) : (BigDecimal) optionR;
+            t.setRobotTime(tempoMaquina);
+
+
+            if(t.getRobotTime() == null || t.getRobotTime().compareTo(valor) == 0 || t.getHumanTime() == null || t.getHumanTime().compareTo(valor) == 0){
+                System.out.println("It was assumed that this task cannot be collaborative because one of the workers cannot perform the task. \n");
+                t.setExecutedByBoth(false);
+            }else{
+                System.out.println("Is the task collaborative (performed by both the Human and the Robot)?");
+                System.out.println("[0] - No                        [1] - Yes");
+                optionR = readOption(ParseOption.INT); //
+                int resposta = optionR == null ? 1 : (int) optionR;
+                if (Arrays.stream(new int[]{0, 1}).noneMatch(value -> value == resposta)) {  //isto é mais chique XDahudhaudahd
+                    System.out.println("Invalid Answer.");
+                    GROUPLIST_CREATE_TASK(g);
+                } else {
+                    t.setExecutedByBoth(resposta == 1);
+                }
+            }
+
+            g.addTask(t);
+        } else {
+
+            System.out.print("Enter the information of the task: ");
+            String resposta = readOption();
+
+            String[] data = resposta.split(";");
+
+            t.setName(data[0]);
+            t.setHumanTime(new BigDecimal(data[1]));
+            t.setErgonomic(new BigDecimal(data[2]));
+            t.setRobotTime(new BigDecimal(data[3]));
+            t.setExecutedByBoth(Boolean.parseBoolean(data[4]));
+
+            g.addTask(t);
+
+
+        }
+    }
+
+    private static void GROUPLIST_CHANGE_NAME(Group g) {
+        System.out.print("What is the new name? ");
+        String name = readOption();
+
+        g.setName(name == null || name.trim().length() == 0 ? g.getName() : name);
+
+    }
+
+    private static void GROUP_LIST_TASKS(Group g) {
+        boolean a = true;
+        while (a) {
+            clearConsole();
+            System.out.println("Available Tasks: ");
+            int i = 0;
+            for (; i < g.getTasks().size(); i++) {
+                System.out.println("[" + (i + 1) + "] - " + g.getTasks().get(i).getName());
+            }
+            if (g.getTasks().size() == 0) System.out.println("There are no tasks to present.");
+            System.out.println("\n0 - Return");
+            int value = -1;
+            while (value < 0 || value > g.getTasks().size()) {
+                System.out.print("Enter a value: ");
+
+                Object obj = readOption(ParseOption.INT);
+                value = obj == null ? -1 : (int) obj;
+                if (value == -1) System.out.println("Invalid Value!");
+                if (value > g.getTasks().size()) System.out.println("Value out of the scope of options!");
+            }
+            if (value == Option.GROUPLIST_GO_BACK.getPos()) {
+                a = false;
+                // sair
+            } else {
+
+                    Task t = g.getTasks().get(value-1);
+                    TASKMENU_DETAILS(g,t);
+            }
+        }
+
+
+        }
+
+    private static void JOBLIST_CREATE_GROUP(Job job){
+        System.out.print("Choose how many groups you want to add: ");
+        Object optionR = readOption(ParseOption.INT); //
+        int quantidade = optionR == null ? 0 : (int) optionR;
+        if (quantidade == 0){
+            System.out.println("Invalid value entered.");
+        }else {
+            for (int i = 0; i < quantidade; i++) {
+                if(!dev) {
+                    int b;
+                    b = i + 1;
+                    System.out.println("Write the name of the group " + b + ": ");
+                    job.addUnassociatedGroup(new Group(readOption()));
+                } else {
+                    System.out.print("Write the information of the group: ");
+                    String resposta = readOption();
+                    String[] data = resposta.split("#");
+                    
+                    Group g = new Group(data[0]);
+                    String[] tasks = data[1].split("%");
+                    for (String s : tasks) {
+                        String[] data2 = s.split(";");
+                        Task t = new Task();
+                        t.setName(data2[0]);
+                        t.setHumanTime(new BigDecimal(data2[1]));
+                        t.setErgonomic(new BigDecimal(data2[2]));
+                        t.setRobotTime(new BigDecimal(data2[3]));
+                        t.setExecutedByBoth(Boolean.parseBoolean(data2[4]));
+                        g.addTask(t);
+                    }
+                    job.addUnassociatedGroup(g);
+                }
+            }
+        }
+        System.out.println("Do not forget to make the dependencies between groups :)!"); // dps de criar todos mandar este aviso
+
+
+
+
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static void JOBLIST_ESTABILISH_DEPENDENCIES(Job job){
+        System.out.print("Write the dependency: ");
+
+        String dependencies = readOption();
+
+        if(!job.setDependenciesOrder(dependencies)){
+
+            System.out.println("\nAn error occurred when establishing dependencies.");
+            System.out.println("     Possible reasons: ");
+            System.out.println("        - Not existing Group;");
+            System.out.println("        - Incorrect name of group (uppercase and lowercase matter!);");
+            System.out.println("        - Name of groups have alphanumeric characters;");
+        }
+
+
+    }
+    private static void clearConsole(){
+        //for(int i = 0; i < 2; i++, System.out.println(" "));
+        System.out.println("########################################################################");
+    }
+
+}
+
+
+
