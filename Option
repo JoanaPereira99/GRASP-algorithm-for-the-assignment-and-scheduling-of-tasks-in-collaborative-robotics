@@ -1,0 +1,124 @@
+package com.Enumerators;
+
+import com.Menu;
+
+import java.util.Vector;
+
+public enum Option {
+    // Menu principal
+    MAIN_LIST_JOBS("List created Jobs", 1, MenuType.MAIN),
+    MAIN_CREATE_JOB("Create new Job", 2, MenuType.MAIN),
+
+    MAIN_EXIT("Exit", 0, MenuType.MAIN),
+    // Menu List JOBs
+
+    JOBLIST_CREATE_GROUP("Create Group", 1, MenuType.JOBLIST),
+    JOBLIST_LIST_GROUPS("List created Groups", 2, MenuType.JOBLIST),
+
+    JOBLIST_EXECUTE_PLAN("Run schedule for the job",3, MenuType.JOBLIST),
+
+    JOBSLIST_CHANGE_MAXERGONOMIC("Establish maximum value for the ergonomic risk",4,MenuType.JOBLIST),
+    JOBLIST_ESTABILISH_DEPENDENCIES("Establish Dependencies (Ex.: [A-B-C,D-E-F]).", 5, MenuType.JOBLIST),
+
+    JOBLIST_DELETE("Delete selected Job", 6, MenuType.JOBLIST),
+
+    JOBLIST_CHANGENAME("Modify name of the Job", 7, MenuType.JOBLIST),
+
+    JOBLIST_GO_BACK("Return", 0, MenuType.JOBLIST),
+
+
+
+
+    GROUPLIST_CHANGE_NAME("Modify name of the group", 1,MenuType.GROUPLIST),
+    GROUPLIST_LIST_TASKS("List created Tasks", 2, MenuType.GROUPLIST),
+    GROUPLIST_CREATE_TASK("Create new Task", 3, MenuType.GROUPLIST),
+
+    GROUPLIST_DELETE("Delete selected group", 4, MenuType.GROUPLIST),
+    GROUPLIST_GO_BACK("Return", 0, MenuType.GROUPLIST),
+
+
+    TASKLIST_CHANGE_NAME("Modify name of the task", 1, MenuType.TASKLIST),
+    TASKLIST_EDIT_ERGONOMIC("Edit the Ergonomic Risk of the task", 2,MenuType.TASKLIST),
+    TASKLIST_EDIT_HUMAN_TIME("Edit the time of the Human to perform the task", 3, MenuType.TASKLIST),
+    TASKLIST_EDIT_ROBOT_TIME("Edit the tme of teh Robot to perform the task", 4, MenuType.TASKLIST),
+    TASKLIST_EDIT_EXECUTED_BY_BOTH("Edit if the task is collaborative or not", 5,MenuType.TASKLIST),
+
+    TASKLIST_DELETE("Delete selected task",6,MenuType.TASKLIST),
+
+    TASKLIST_GO_BACK("Return", 0, MenuType.TASKLIST);
+
+
+
+
+
+    // OS GRUPOS QUE HÁ SÃO:
+    // A,B,C,D
+
+    //COMO QUER AS DEPENDENCIAS:
+    //EX.: A>B,C>D>E
+
+    // O JOB VAI TER UMA LISTA DE GRUPOS NÃO ASSOCIADOS E UMA LISTA DE JOBS
+
+
+
+    private String fullName;
+    private int pos;
+    private MenuType menuType;
+    Option(String s, int pos, MenuType menuType) {
+        this.fullName = s;
+        this.pos = pos;
+        this.menuType = menuType;
+    }
+
+    public String getFullName(){
+        return this.fullName;
+    }
+
+    public int getPos(){
+        return this.pos;
+    }
+
+    public MenuType getMenuType(){
+        return this.menuType;
+    }
+
+    public static Option[] getOptionsByMenu(MenuType type){
+
+        Vector<Option> options = new Vector<>();
+        for (Option op : values()
+             ) {
+            if(op.getMenuType() == type) options.add(op);
+        }
+
+        Option[] ret = new Option[options.size()];
+
+        for (int i = 0; i < options.size(); i++){
+            ret[i] = options.get(i);
+        }
+
+        return ret;
+    }
+
+    public static Option getOptionByPos(int pos){
+
+        return getOptionByPos(pos, null);
+    }
+
+    public static Option getOptionByPos(int pos, MenuType menuType){
+
+        Vector<Option> ret = new Vector<>();
+
+        Option[] options = menuType == null ? values() : getOptionsByMenu(menuType);
+
+        for (Option op : options) {
+            if(op.getPos() == pos) return op;
+        }
+
+        return null;
+    }
+
+    public String getPrint(){
+        return this.pos + " - " + this.getFullName();
+    }
+
+}
