@@ -1,0 +1,107 @@
+package com;
+
+import com.Enumerators.Entity;
+import com.Objects.Group;
+import com.Objects.Job;
+import com.Objects.SuperGroup;
+import com.Objects.Task;
+
+import java.math.BigDecimal;
+import java.util.Vector;
+
+public class Data {
+
+    private Vector<Job> jobs = new Vector<Job>();
+
+    public Data(){
+        Job job = new Job("Job 1");
+
+
+
+        SuperGroup main = new SuperGroup();
+        Group group_A = new Group("A");
+        Group group_B = new Group("B");
+        Group group_C = new Group("C");
+        Group group_D = new Group("D");
+        Group group_E = new Group("E");
+
+        SuperGroup superGroup_B = new SuperGroup();
+        SuperGroup superGroup_CD = new SuperGroup();
+        SuperGroup superGroup_E = new SuperGroup();
+        try {
+            group_A.addTask(
+                    new Task("Task 1", new BigDecimal(16), new BigDecimal(18), new BigDecimal("2"), true)
+            ).addTask(
+                    new Task("Task 2", new BigDecimal(25), new BigDecimal(15), new BigDecimal("2.2")).setExecutedByHuman(true)
+            )
+            ;
+
+            group_B.addTask(
+                    new Task("Task 3", new BigDecimal(16), new BigDecimal(18), new BigDecimal("2"), true)
+            ).addTask(
+                    new Task("Task 4", new BigDecimal(25), new BigDecimal(30), new BigDecimal("2.2")).setExecutedByHuman(true)
+            )
+            ;
+
+            group_C.addTask(
+                    new Task("Task 5", new BigDecimal(16), new BigDecimal(18), new BigDecimal("2"), true)
+            ).addTask(
+                    new Task("Task 6", new BigDecimal(25), new BigDecimal(15), new BigDecimal("2.2")).setExecutedByHuman(true)
+            )
+            ;
+
+            group_D.addTask(
+                    new Task("Task 7", new BigDecimal(16), new BigDecimal(18), new BigDecimal("2"), true)
+            ).addTask(
+                    new Task("Task 8", new BigDecimal(25), new BigDecimal(15), new BigDecimal("2.2")).setExecutedByHuman(true)
+            )
+            ;
+
+            group_E.addTask(
+                    new Task("Task 9", new BigDecimal(16), new BigDecimal(18), new BigDecimal("2"), false)
+            ).addTask(
+                    new Task("Task 10", new BigDecimal(25), new BigDecimal(15), new BigDecimal("2.2")).setExecutedByHuman(true)
+            )
+            ;
+
+            main.addGroup(group_A);
+
+            superGroup_B.addGroup(group_B);
+            superGroup_CD.addGroup(group_C);
+            superGroup_CD.addGroup(group_D);
+            superGroup_E.addGroup(group_E);
+
+            superGroup_CD.setDependencies(superGroup_E);
+            superGroup_B.setDependencies(superGroup_CD);
+            main.setDependencies(superGroup_B);
+
+            job.setGroups(main);
+
+
+            job.setDependenciesOrder("A,B-C");
+            job.setDependenciesOrder("A-C-B");
+            job.setDependenciesOrder("C,B-A");
+            job.setDependenciesOrder("C,B-A");
+
+
+
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+
+        jobs.add(job);
+        job.optimize();
+        job.execute();
+        System.out.println(job.toString());
+    }
+
+    public Vector<Job> getJobs() {
+        return jobs;
+    }
+
+    public void setJobs(Vector<Job> jobs) {
+        this.jobs = jobs;
+    }
+}
