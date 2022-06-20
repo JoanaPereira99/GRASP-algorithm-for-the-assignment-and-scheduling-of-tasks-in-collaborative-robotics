@@ -1,0 +1,75 @@
+package com.Objects;
+
+import java.math.BigDecimal;
+import java.sql.Time;
+import java.util.Objects;
+
+public class GroupThread extends Thread {
+
+    private Group group;
+    private Timelapse timelapse = new Timelapse();
+
+    public GroupThread(Group group){
+        this.group = group;
+    }
+
+    public GroupThread(Group group, BigDecimal count){
+        this.group = group;
+        this.timelapse.setStartTime(count);
+    }
+
+    @Override
+    public void run() {
+        BigDecimal count = timelapse.getStartTime();
+        for (Task e : this.group.getTasks()) {
+            if (this.group.getRobotTasks().contains(e)) {
+                e.setTimelapse(new Timelapse(count, count.add(e.getRobotTime())));
+                count = count.add(e.getRobotTime());
+            } else if (this.group.getHumanTasks().contains(e)) {
+                e.setTimelapse(new Timelapse(count, count.add(e.getHumanTime())));
+                count = count.add(e.getHumanTime());
+            } else if(this.group.getBothTasks().contains(e)){
+                e.setTimelapse(new Timelapse(count, count.add(e.getHighestTime())));
+                count = count.add(e.getHighestTime());
+            }
+        }
+        timelapse.setEndTime(count);
+    }
+
+    public Group getGroup() {
+        return group;
+    }
+
+    public void setGroup(Group group) {
+        this.group = group;
+    }
+
+    public Timelapse getTimelapse() {
+        return timelapse;
+    }
+
+    public void setTimelapse(Timelapse timelapse) {
+        this.timelapse = timelapse;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof GroupThread)) return false;
+        GroupThread that = (GroupThread) o;
+        return Objects.equals(group, that.group) && Objects.equals(timelapse, that.timelapse);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(group, timelapse);
+    }
+
+    @Override
+    public String toString() {
+        return "GroupThread{" +
+                "group=" + group +
+                ", timelapse=" + timelapse +
+                '}';
+    }
+}
