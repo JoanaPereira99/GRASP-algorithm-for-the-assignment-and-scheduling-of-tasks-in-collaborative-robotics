@@ -1,0 +1,287 @@
+package com.Objects;
+
+import com.Enumerators.Entity;
+
+import java.io.Serializable;
+import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.Objects;
+
+public class Task implements Serializable {
+
+    /**
+     * Variables used
+     */
+    private String name;
+    private BigDecimal humanTime;
+    private BigDecimal robotTime;
+    private BigDecimal ergonomic;
+
+    private Timelapse timelapse = new Timelapse();
+
+    private boolean executedByBoth = false;
+    private boolean executedByHuman = false;
+    private boolean executedByRobot = false;
+
+    public Task(){
+        this.name = "";
+        setHumanTime(null);
+        setRobotTime(null);
+        setErgonomic(null);
+        setTimelapse(new Timelapse());
+    }
+
+    public Task(String name, BigDecimal robotTime, BigDecimal humanTime, BigDecimal ergonomic, Timelapse timelapse) throws Exception {
+        if(robotTime.compareTo(BigDecimal.ZERO) < 0 && humanTime.compareTo(BigDecimal.ZERO) < 0) throw new Exception("No one can execute this task.");
+        this.name = name;
+        setHumanTime(humanTime);
+        setRobotTime(robotTime);
+        setErgonomic(ergonomic);
+        setTimelapse(timelapse);
+    }
+
+    public Task(String name, BigDecimal robotTime, BigDecimal humanTime, BigDecimal ergonomic) throws Exception {
+        if(robotTime.compareTo(BigDecimal.ZERO) < 0 && humanTime.compareTo(BigDecimal.ZERO) < 0) throw new Exception("No one can execute this task.");
+        this.name = name;
+        setHumanTime(humanTime);
+        setRobotTime(robotTime);
+        setErgonomic(ergonomic);
+        setTimelapse(null);
+    }
+
+    public Task(String name, BigDecimal robotTime, BigDecimal humanTime, BigDecimal ergonomic, Timelapse timelapse, boolean executedByBoth) throws Exception {
+        if(robotTime.compareTo(BigDecimal.ZERO) < 0 && humanTime.compareTo(BigDecimal.ZERO) < 0) throw new Exception("No one can execute this task.");
+        this.name = name;
+        setHumanTime(humanTime);
+        setRobotTime(robotTime);
+        setErgonomic(ergonomic);
+        setTimelapse(timelapse);
+        setExecutedByBoth(executedByBoth);
+
+    }
+
+    public Task(String name, BigDecimal robotTime, BigDecimal humanTime, BigDecimal ergonomic, boolean executedByBoth) throws Exception {
+        if(robotTime.compareTo(BigDecimal.ZERO) < 0 && humanTime.compareTo(BigDecimal.ZERO) < 0) throw new Exception("No one can execute this task.");
+        this.name = name;
+        setHumanTime(humanTime);
+        setRobotTime(robotTime);
+        setErgonomic(ergonomic);
+        setTimelapse(null);
+        setExecutedByBoth(executedByBoth);
+
+    }
+
+    public boolean canRobotDo() {
+        return !Objects.equals(this.robotTime, new BigDecimal(-1));
+    }
+
+    public boolean canHumanDo() {
+        return !Objects.equals(this.humanTime, new BigDecimal(-1));
+    }
+
+    public boolean hasErgonomicValue() {
+        return this.ergonomic.compareTo(BigDecimal.ZERO) > 0;
+    }
+
+    public BigDecimal getTimeDifference(boolean absolute){
+        BigDecimal difference = isRobotFaster() ? robotTime.subtract(humanTime) : humanTime.subtract(robotTime);
+
+        if(difference.compareTo(BigDecimal.ZERO) < 0 && absolute) {
+            difference = difference.abs();
+            if(humanTime.compareTo(BigDecimal.ZERO) < 0) difference = difference.add(humanTime.abs());
+            if(robotTime.compareTo(BigDecimal.ZERO) < 0) difference = difference.add(robotTime.abs());
+        }
+        return difference;
+    }
+
+    public boolean isRobotFaster(){
+        return robotTime.compareTo(humanTime) <= 0 ;
+    }
+    public boolean isHumanFaster(){
+        return robotTime.compareTo(humanTime) > 0 ;
+    }
+
+    public Entity whoIsFaster(){
+        return isRobotFaster() ? Entity.ROBOT : Entity.HUMAN;
+    }
+
+    public BigDecimal getHighestTime(){
+        return isRobotFaster() ? getHumanTime() : getRobotTime();
+    }
+
+    /**
+     * @return
+     */
+    public String getName() {
+        return name;
+    }
+
+    /**
+     * @param name
+     */
+    public Task setName(String name) {
+        this.name = name;
+        return this;
+    }
+
+    /**
+     * @return
+     */
+    public BigDecimal getHumanTime() {
+        return humanTime;
+    }
+
+    /**
+     * @param human
+     */
+    public Task setHumanTime(BigDecimal human) {
+        if (human == null) human = new BigDecimal(-1);
+        this.humanTime = human;
+        return this;
+    }
+
+    /**
+     * @return
+     */
+    public BigDecimal getRobotTime() {
+        return robotTime;
+    }
+
+    /**
+     * @param robotTime
+     */
+    public Task setRobotTime(BigDecimal robotTime) {
+        if (robotTime == null) robotTime = new BigDecimal(-1);
+        this.robotTime = robotTime;
+        return this;
+
+    }
+
+    /**
+     * @return
+     */
+    public BigDecimal getErgonomic() {
+        return ergonomic;
+    }
+
+    /**
+     * @param ergonomic
+     */
+    public Task setErgonomic(BigDecimal ergonomic) {
+        if (ergonomic == null || ergonomic.compareTo(BigDecimal.ZERO) < 0) ergonomic = BigDecimal.ZERO;
+        this.ergonomic = ergonomic;
+        return this;
+
+    }
+
+    public Timelapse getTimelapse() {
+        return timelapse;
+    }
+
+    public void setTimelapse(Timelapse timelapse) {
+        if (timelapse==null) timelapse = new Timelapse();
+        this.timelapse = timelapse;
+    }
+
+    public Entity getChosenOne() {
+        return (executedByBoth) ? Entity.BOTH : (executedByHuman ? Entity.HUMAN : (executedByRobot ? Entity.ROBOT : Entity.NONE));
+    }
+
+    public Task setExecutedByBoth(boolean executedByBoth) {
+        if(!canHumanDo() || !canRobotDo()) return this;
+        this.executedByBoth = executedByBoth;
+        if(executedByBoth){
+            executedByHuman = true;
+            executedByRobot = true;
+        }
+        return this;
+    }
+
+    public boolean isExecutedByBoth() {
+        return executedByBoth;
+    }
+
+    public boolean isExecutedByHuman() {
+        return executedByHuman;
+    }
+
+    public Task setExecutedByHuman(boolean executedByHuman) {
+        if(!canHumanDo()) executedByHuman = false;
+        this.executedByHuman = executedByHuman;
+        this.executedByRobot = false;
+        this.executedByBoth = false;
+        return this;
+    }
+
+    public boolean isExecutedByRobot() {
+        return executedByRobot;
+    }
+
+    public Task setExecutedByRobot(boolean executedByRobot) {
+        if(!canRobotDo()) executedByRobot = false;
+        this.executedByRobot = executedByRobot;
+        this.executedByHuman = false;
+        this.executedByBoth = false;
+        return this;
+    }
+
+    @Override
+    public String toString() {
+        return "{" +
+                "name='" + name + '\'' +
+                ", humanTime=" + humanTime +
+                ", robotTime=" + robotTime +
+                ", ergonomic=" + ergonomic +
+                ", timelapse=" + timelapse +
+                ", executedByBoth=" + executedByBoth +
+                ", executedByHuman=" + executedByHuman +
+                ", executedByRobot=" + executedByRobot +
+                '}';
+    }
+
+
+    /*
+    *
+    *  private String name;
+    private BigDecimal humanTime;
+    private BigDecimal robotTime;
+    private BigDecimal ergonomic;
+
+    private Timelapse timelapse;
+
+    private boolean executedByBoth = false;
+    private boolean executedByHuman = false;
+    private boolean executedByRobot = false;
+    *
+    * */
+
+    @Override
+    protected Task clone() {
+
+        Task task = new Task();
+
+        task.name = this.name;
+        task.humanTime = new BigDecimal(String.valueOf(this.humanTime));
+        task.robotTime = new BigDecimal(String.valueOf(this.robotTime));
+        task.ergonomic = new BigDecimal(String.valueOf(this.ergonomic));
+        task.timelapse = this.timelapse.clone();
+        task.executedByBoth = this.executedByBoth;
+        task.executedByHuman = this.executedByHuman;
+        task.executedByRobot = this.executedByRobot;
+
+        return task;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Task)) return false;
+        Task task = (Task) o;
+        return executedByBoth == task.executedByBoth && executedByHuman == task.executedByHuman && executedByRobot == task.executedByRobot && Objects.equals(name, task.name) && Objects.equals(humanTime, task.humanTime) && Objects.equals(robotTime, task.robotTime) && Objects.equals(ergonomic, task.ergonomic) && Objects.equals(timelapse, task.timelapse);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, humanTime, robotTime, ergonomic, timelapse, executedByBoth, executedByHuman, executedByRobot);
+    }
+}
