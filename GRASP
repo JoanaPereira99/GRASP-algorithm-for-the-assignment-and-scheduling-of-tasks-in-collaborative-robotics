@@ -1,0 +1,73 @@
+package com.Functions;
+
+import com.Objects.Task;
+
+import java.math.BigDecimal;
+import java.util.Collections;
+import java.util.Random;
+import java.util.Vector;
+
+
+/**
+ * GREEDY RANDOMIZED ADAPTIVE SEARCH PROCEDURE
+ *
+ *
+ */
+public class GRASP {
+
+    public static Task GRASP(BigDecimal iterations, Vector<Task> seed, BigDecimal rclSize) {
+        if(seed.size() == 0) return null;
+        Vector<Task> solutions = new Vector<>();
+        for(BigDecimal i = BigDecimal.ZERO; i.compareTo(iterations) < 0; i=i.add(BigDecimal.ONE)){
+            Vector<Task> dummy = greedyRandomizedConstruction(seed,rclSize);
+            Task solution = localSearch(dummy);
+            solutions.add(solution);
+
+        }
+
+        return solutions.size() > 0 ? orderByTime(solutions).get(0) : null;
+    }
+
+    private static Vector<Task> greedyRandomizedConstruction(Vector<Task> tasks, BigDecimal quantity) {
+        Vector<Task> tasksOrdered = orderByTime(tasks); //The chosen ones. The list of the best candidates.
+        quantity = new BigDecimal(tasksOrdered.size()).multiply(quantity);
+        if(quantity.compareTo(new BigDecimal(tasksOrdered.size())) > 0) quantity = new BigDecimal(tasksOrdered.size());
+        Vector<Task> RCL = new Vector<Task>();
+        for(BigDecimal i = BigDecimal.ZERO; i.compareTo(quantity) < 0; i=i.add(BigDecimal.ONE)){
+            RCL.add(tasksOrdered.get(i.intValue()));
+        }
+
+        return RCL;
+    }
+
+    private static Task localSearch(Vector<Task> RCL){
+        Random random = new Random();
+        int n = random.nextInt(RCL.size());
+        do{
+            if (n>0 && RCL.get(n-1).getRobotTime().compareTo(RCL.get(n).getRobotTime()) < 0 && !(n<RCL.size()-1 && RCL.get(n+1).getRobotTime().compareTo(RCL.get(n).getRobotTime()) < 0)) {
+                n = n-1;
+            } else if (n<RCL.size()-1 && RCL.get(n+1).getRobotTime().compareTo(RCL.get(n).getRobotTime()) < 0 && !(n>0 && RCL.get(n-1).getRobotTime().compareTo(RCL.get(n).getRobotTime()) < 0)) {
+                n = n+1;
+            }else break;
+        }while(true);
+        return RCL.get(n);
+    }
+
+    public static Vector<Task> orderByTime(Vector<Task> order) {
+        Vector<Task> dummy = new Vector<>(order);
+
+        Collections.sort(dummy, (t1, t2) -> {
+            int r = t2.getTimeDifference(false).compareTo(t1.getTimeDifference(false));
+            return r;
+
+            //return t1.getErgonomic().compareTo(t2.getErgonomic());
+        });
+        return dummy;
+    }
+
+
+
+
+
+
+}
