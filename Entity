@@ -1,0 +1,20 @@
+package com.Enumerators;
+
+public enum Entity {
+    ROBOT("Robot"),
+    HUMAN("Human"),
+    BOTH("Human and Robot"),
+    NONE("None")
+    ;
+
+    private String name;
+    Entity(String name){
+        this.name = name;
+    }
+
+    public String getName(){
+        return this.name;
+    }
+
+
+}
