@@ -1,0 +1,10 @@
+package com.Enumerators;
+
+public enum MenuType {
+
+    MAIN,
+    JOBLIST,
+    GROUPLIST,
+    TASKLIST
+
+}
