@@ -1,0 +1,177 @@
+package com.Objects;
+
+import com.Enumerators.Entity;
+
+import java.io.Serializable;
+import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.Vector;
+import java.util.stream.Collectors;
+
+public class SuperGroup implements Serializable {
+
+    private Vector<Group> groups = new Vector<>();
+    private SuperGroup dependencies;
+
+    private Timelapse timelapse = new Timelapse();
+
+
+    public Vector<Group> getAllGroups(SuperGroup gs){
+        if(gs == null) return new Vector<>();
+        Vector<Group> groups = new Vector<>(gs.getGroups());
+        if(gs.getDependencies() != null) groups.addAll(getAllGroups(gs.getDependencies()));
+        return groups;
+    }
+
+    public boolean execute(BigDecimal count){
+
+        this.timelapse.setStartTime(count);
+
+        Vector<GroupThread> threads = new Vector<>();
+
+        for (Group g : groups) {
+            GroupThread t = new GroupThread(g, count);
+            t.start();
+            threads.add(t);
+        }
+
+        Vector<GroupThread> terminatedThreads = new Vector<>();
+
+        while(threads.size() > 0){
+            for (GroupThread t : new Vector<>(threads)) {
+                if(t.getState() == Thread.State.TERMINATED) {
+                    terminatedThreads.add(t);
+                    threads.remove(t);
+                }
+            }
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+
+
+
+        Vector<Group> toIgnore = new Vector<>();
+        for (GroupThread gt : terminatedThreads) {
+            for(GroupThread gt2 : terminatedThreads) {
+                if (toIgnore.contains(gt2.getGroup())) continue;
+                if (!gt.equals(gt2)) {
+                    for (Task t : gt.getGroup().getTasks()) {
+                        Vector<Task> tasksG = gt2.getGroup().getTasksByTimelapse(t.getTimelapse());
+                        BigDecimal timeDifference;
+                        for (Task tG : tasksG) {
+                            if (tG.getChosenOne() == t.getChosenOne() || tG.getChosenOne() == Entity.BOTH || t.getChosenOne() == Entity.BOTH) {
+                                timeDifference = t.getTimelapse().getEndTime().subtract(tG.getTimelapse().getStartTime());
+                                tG.getTimelapse().setStartTime(tG.getTimelapse().getStartTime().add(timeDifference));
+                                tG.getTimelapse().setEndTime(tG.getTimelapse().getEndTime().add(timeDifference));
+                            }
+
+                            Vector<Task> allTasks = gt2.getGroup().getTasks();
+
+                            Task previousTask = null;
+                            boolean ignore = true;
+                            for (Task tG2 : allTasks) {
+                                if(tG2.equals(tG)) ignore = false;
+                                if(previousTask != null && !ignore && previousTask.getTimelapse().getEndTime().compareTo(tG2.getTimelapse().getStartTime()) >= 0){
+                                    BigDecimal duration = tG2.getTimelapse().getDuration();
+                                    tG2.getTimelapse().setStartTime(previousTask.getTimelapse().getEndTime());
+                                    tG2.getTimelapse().setEndTime(tG2.getTimelapse().getStartTime().add(duration));
+                                }
+                                previousTask = tG2;
+                            }
+                        }
+                    }
+                }
+                gt2.getTimelapse().setStartTime(gt2.getGroup().getTasks().size() > 0 ? gt2.getGroup().getTasks().get(0).getTimelapse().getStartTime() : gt2.getTimelapse().getStartTime());
+                gt2.getTimelapse().setEndTime(gt2.getGroup().getTasks().size() > 0 ? gt2.getGroup().getTasks().get(gt2.getGroup().getTasks().size()-1).getTimelapse().getEndTime() : gt2.getTimelapse().getEndTime());
+            }
+            toIgnore.add(gt.getGroup());
+        }
+
+
+        for (GroupThread gt : terminatedThreads) {
+            List<Group> gs = this.groups.stream().filter(group -> Objects.equals(group.getName(), gt.getGroup().getName())).collect(Collectors.toList());
+            if(gs.size() > 0){
+                this.groups.get(this.groups.indexOf(gs.get(0))).getTimelapse().setStartTime(this.timelapse.getStartTime()).setEndTime(gt.getTimelapse().getEndTime());
+            }
+            if(count.compareTo(gt.getTimelapse().getEndTime()) <= 0) count = gt.getTimelapse().getEndTime();
+        }
+
+        this.timelapse.setEndTime(count);
+
+        if(dependencies != null) dependencies.execute(count);
+        return true;
+    }
+
+    public Vector<Group> getGroups() {
+        return groups;
+    }
+    public Group getGroup(String name) {
+        for (Group g : groups) {
+            if(g.getName().equals(name)) return g;
+        }
+
+        return null;
+    }
+
+    public SuperGroup setGroups(Vector<Group> groups) {
+        this.groups = groups;
+        return this;
+    }
+
+    public SuperGroup addGroup(Group g) {
+        if(g != null) this.groups.add(g);
+        return this;
+    }
+
+    public SuperGroup removeGroup(Group g) {
+        if(g != null) this.groups.remove(g);
+        return this;
+    }
+
+    public SuperGroup getDependencies() {
+        return dependencies;
+    }
+
+    public void setDependencies(SuperGroup dependencies) {
+        this.dependencies = dependencies;
+    }
+
+    public Timelapse getTimelapse() {
+        return timelapse;
+    }
+
+    public void setTimelapse(Timelapse timelapse) {
+        if(timelapse == null) timelapse = new Timelapse();
+        this.timelapse = timelapse;
+    }
+
+    @Override
+    protected SuperGroup clone() {
+        SuperGroup ret = new SuperGroup();
+        for(Group g : this.getGroups()){
+            ret.groups.add(g.clone());
+        }
+        ret.dependencies = this.dependencies == null ? null : this.dependencies.clone();
+        ret.timelapse = this.timelapse.clone();
+        return ret;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof SuperGroup)) return false;
+        SuperGroup that = (SuperGroup) o;
+        return Objects.equals(groups, that.groups) && Objects.equals(dependencies, that.dependencies) && Objects.equals(timelapse, that.timelapse);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(groups, dependencies, timelapse);
+    }
+}
