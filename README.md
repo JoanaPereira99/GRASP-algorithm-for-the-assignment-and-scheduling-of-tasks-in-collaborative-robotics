@@ -8,3 +8,5 @@ File GRASP must be inside a file called Functions
 The files Group, GroupThread, Job, SuperGroup, Task and Timelapse must be inside a file called Objects
 Then, files Enumerators, Funcrions, Objects, Data, Main and Menu must be inside file called com.
 
+For testing the program it is recommended to use the original zipped file. Therefore, if you are interested in testing the program, please contact me through the following email: joanapereira99@ua.pt 
+
