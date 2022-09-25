@@ -1,5 +1,5 @@
-# GRASP-algorithm-for-the-assignment-and-scheduling-of-tasks-in-collaborative-robotics
-A Greedy Randomized Adaptive Search Procedure is presented for the assignment asn scheduling of tasks between a human worker and a collaborative robot
+# An algorithm inspired in GRASP-for-the-assignment-and-scheduling-of-tasks-in-collaborative-robotics
+A algorithm inspired in the Greedy Randomized Adaptive Search Procedure is presented for the assignment asn scheduling of tasks between a human worker and a collaborative robot
 
 The program was coded in java in IntellJ IDEA
 
